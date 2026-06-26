@@ -94,11 +94,10 @@ export default function App() {
   const [lastFreeRefill, setLastFreeRefill] = useState(() => {
     return localStorage.getItem('fj_last_free_refill') || null;
   });
-  const [screen, setScreen] = useState('game');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [mobile, setMobile] = useState(window.innerWidth < 900);
-  const [walletAddress, setWalletAddress] = useState(null);
+  const [walletAddress, setWalletAddress] = useState(null); // eslint-disable-line
 
   const [gameState, setGameState] = useState(GAME_STATE.IDLE);
   const [deck, setDeck] = useState([]);
