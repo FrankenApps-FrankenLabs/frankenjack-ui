@@ -5,6 +5,7 @@ import Blackjack from './Blackjack';
 import Slots from './Slots';
 
 const RECEIVING_WALLET = '0x11cEF17C7581Df308179919e80Be5Dbb6B1CcC4B';
+const BACKEND_URL = 'https://frankenapps-frankenlabs-frankenjack.onrender.com';
 const LCAI_CHAIN = {
   chainId: '0x23F0',
   chainName: 'LightChain AI',
@@ -17,9 +18,6 @@ const PAID_TOKENS = 50;
 const PAID_COST = '30';
 const GUEST_KEY = 'fj_guest_tokens';
 const GUEST_CLAIM_KEY = 'fj_guest_lastclaim';
-
-function getStorageKey(wallet) { return `fj_tokens_${wallet.toLowerCase()}`; }
-function getLastClaimKey(wallet) { return `fj_lastclaim_${wallet.toLowerCase()}`; }
 
 function canFreeClaim(key) {
   const last = localStorage.getItem(key);
@@ -64,10 +62,8 @@ const NeonPanel = ({ flip }) => (
 export default function App() {
   const [walletAddress, setWalletAddress] = useState(null);
   const [tokens, setTokens] = useState(() => {
-    // Guest tokens from localStorage
     const saved = localStorage.getItem(GUEST_KEY);
     if (saved !== null) return parseInt(saved);
-    // First visit — give free tokens
     if (canFreeClaim(GUEST_CLAIM_KEY)) {
       localStorage.setItem(GUEST_KEY, FREE_TOKENS.toString());
       saveLastClaim(GUEST_CLAIM_KEY);
@@ -75,6 +71,7 @@ export default function App() {
     }
     return 0;
   });
+  const [pokerChips, setPokerChips] = useState(0);
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
@@ -96,15 +93,35 @@ export default function App() {
     }
   }, [tokens, walletAddress]);
 
-  const updateTokens = useCallback((val) => {
+  const syncBalanceToBackend = useCallback(async (wallet, newTokens, newPokerChips) => {
+    try {
+      await fetch(`${BACKEND_URL}/api/players/balance`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet, tokens: newTokens, poker_chips: newPokerChips })
+      });
+    } catch (err) {
+      console.error('Failed to sync balance:', err);
+    }
+  }, []);
+
+  const updateTokens = useCallback(async (val) => {
     const newVal = typeof val === 'function' ? val(tokens) : val;
+    setTokens(newVal);
     if (walletAddress) {
-      localStorage.setItem(getStorageKey(walletAddress), newVal.toString());
+      await syncBalanceToBackend(walletAddress, newVal, pokerChips);
     } else {
       localStorage.setItem(GUEST_KEY, newVal.toString());
     }
-    setTokens(newVal);
-  }, [tokens, walletAddress]);
+  }, [tokens, pokerChips, walletAddress, syncBalanceToBackend]);
+
+  const updatePokerChips = useCallback(async (val) => {
+    const newVal = typeof val === 'function' ? val(pokerChips) : val;
+    setPokerChips(newVal);
+    if (walletAddress) {
+      await syncBalanceToBackend(walletAddress, tokens, newVal);
+    }
+  }, [tokens, pokerChips, walletAddress, syncBalanceToBackend]);
 
   const connectWallet = async () => {
     try {
@@ -117,23 +134,30 @@ export default function App() {
       }
       const wallet = accounts[0];
       setWalletAddress(wallet);
-      // Load wallet tokens if they exist, otherwise carry over guest tokens
-      const saved = localStorage.getItem(getStorageKey(wallet));
-      if (saved !== null) {
-        setTokens(parseInt(saved));
-      }
-      // Clear guest tokens now wallet is connected
+
+      // Fetch or create player from backend
+      const res = await fetch(`${BACKEND_URL}/api/players/${wallet}`);
+      const player = await res.json();
+      setTokens(player.tokens);
+      setPokerChips(player.poker_chips);
+
+      // Clear guest tokens
       localStorage.removeItem(GUEST_KEY);
     } catch (err) {
       setStatus('Error: ' + err.message);
     }
   };
 
-  const doFreeClaim = () => {
-    const key = walletAddress ? getLastClaimKey(walletAddress) : GUEST_CLAIM_KEY;
+  const doFreeClaim = async () => {
+    const key = GUEST_CLAIM_KEY;
     const newTotal = tokens + FREE_TOKENS;
-    updateTokens(newTotal);
     saveLastClaim(key);
+    if (walletAddress) {
+      await syncBalanceToBackend(walletAddress, newTotal, pokerChips);
+    } else {
+      localStorage.setItem(GUEST_KEY, newTotal.toString());
+    }
+    setTokens(newTotal);
     setStatus('30 free tokens added!');
     setTimeout(() => setStatus(''), 2000);
   };
@@ -148,8 +172,20 @@ export default function App() {
       const tx = await signer.sendTransaction({ to: RECEIVING_WALLET, value: parseEther(PAID_COST) });
       setStatus('Processing...');
       await tx.wait();
-      const newTotal = tokens + PAID_TOKENS;
-      updateTokens(newTotal);
+
+      if (walletAddress) {
+        const res = await fetch(`${BACKEND_URL}/api/payments/refill`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: walletAddress, tx_hash: tx.hash })
+        });
+        const data = await res.json();
+        if (data.tokens !== undefined) setTokens(data.tokens);
+      } else {
+        const newTotal = tokens + PAID_TOKENS;
+        localStorage.setItem(GUEST_KEY, newTotal.toString());
+        setTokens(newTotal);
+      }
       setStatus('50 tokens added!');
       setTimeout(() => setStatus(''), 2000);
     } catch (err) {
@@ -158,7 +194,7 @@ export default function App() {
     setLoading(false);
   };
 
-  const claimKey = walletAddress ? getLastClaimKey(walletAddress) : GUEST_CLAIM_KEY;
+  const claimKey = GUEST_CLAIM_KEY;
   const canClaim = canFreeClaim(claimKey);
   const countdown = freeClaimCountdown(claimKey);
   const bothChecked = ageCheck && entertainmentCheck;
@@ -175,7 +211,6 @@ export default function App() {
     checkbox: (checked) => ({ width: '20px', height: '20px', flexShrink: 0, marginTop: '2px', border: `2px solid ${checked ? '#00ff88' : '#444'}`, borderRadius: '4px', background: checked ? 'rgba(0,255,136,0.2)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: checked ? '0 0 10px #00ff8855' : 'none' }),
   };
 
-  // Out of tokens screen
   const outOfTokensScreen = (
     <div style={{ ...S.section, textAlign: 'center' }}>
       <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>😬</div>
@@ -252,6 +287,7 @@ export default function App() {
         <Lobby
           walletAddress={walletAddress}
           tokens={tokens}
+          pokerChips={pokerChips}
           canClaim={canClaim}
           countdown={countdown}
           onClaim={doFreeClaim}
