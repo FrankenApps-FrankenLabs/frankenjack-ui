@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createDeck, determineWinner, getHandName, evaluateHand, dealerShouldCall } from './pokerUtils';
+import { createDeck, determineWinner, getHandName, evaluateHand, dealerDecision } from './pokerUtils';
 
 const STAGES = { IDLE: 'idle', PREFLOP: 'preflop', FLOP: 'flop', TURN: 'turn', RIVER: 'river', SHOWDOWN: 'showdown' };
 const MIN_BET = 5;
@@ -19,8 +19,8 @@ export default function Poker({ tokens, setTokens, onBack }) {
   const [result, setResult] = useState(null);
   const [status, setStatus] = useState('');
   const [folded, setFolded] = useState(false);
-  const [, setDealerFolded] = useState(false);
   const [glitch, setGlitch] = useState(false);
+  const [dealerStatus, setDealerStatus] = useState('');
 
   const triggerGlitch = () => { setGlitch(true); setTimeout(() => setGlitch(false), 600); };
 
@@ -35,51 +35,76 @@ export default function Poker({ tokens, setTokens, onBack }) {
     setDealerHole(dHole);
     setCommunity([]);
     setFolded(false);
-    setDealerFolded(false);
     setResult(null);
     setStatus('');
-    // Post blinds
-    const smallBlind = Math.min(SMALL_BLIND, tokens);
+    setDealerStatus('');
     const bigBlind = Math.min(BIG_BLIND, tokens);
-    setPot(smallBlind + bigBlind);
+    setPot(SMALL_BLIND + bigBlind);
     setPlayerBet(bigBlind);
-    setDealerBet(smallBlind);
+    setDealerBet(SMALL_BLIND);
     setTokens(tokens - bigBlind);
     setBetAmount(MIN_BET);
     setStage(STAGES.PREFLOP);
   };
 
   const doCall = () => {
-    const callAmount = dealerBet > playerBet ? dealerBet - playerBet : BIG_BLIND;
-    const actual = Math.min(callAmount, tokens);
-    const newPot = pot + actual + actual; // player calls, dealer matches
+    const callAmount = Math.max(0, dealerBet - playerBet);
+    const actual = Math.min(callAmount || BIG_BLIND, tokens);
+    const newPot = pot + actual * 2;
     setTokens(tokens - actual);
     setPot(newPot);
     setPlayerBet(playerBet + actual);
-    advanceStage(newPot);
+    setDealerStatus('Dealer checks.');
+    advanceStage(newPot, [...community]);
   };
 
   const doRaise = () => {
     if (tokens < betAmount) { setStatus('Not enough tokens to raise.'); return; }
-    const newPot = pot + betAmount;
+    const newPlayerPot = pot + betAmount;
     setTokens(tokens - betAmount);
-    setPot(newPot);
     setPlayerBet(playerBet + betAmount);
 
-    // Dealer decides to call or fold
-    const dealerCalls = dealerShouldCall(dealerHole, community, newPot, betAmount);
-    if (dealerCalls) {
-      setPot(newPot + betAmount);
+    // Dealer responds
+    const decision = dealerDecision(dealerHole, community);
+    if (decision === 'raise') {
+      const dealerRaise = betAmount;
+      const newPot = newPlayerPot + dealerRaise * 2;
+      setPot(newPot);
+      setDealerBet(dealerBet + dealerRaise);
+      setDealerStatus(`Dealer raises ${dealerRaise}!`);
+      if (tokens - betAmount < dealerRaise) {
+        // Player can't afford to call dealer raise — auto fold
+        setFolded(true);
+        finishHand(newPot, true, false);
+        return;
+      }
+      advanceStage(newPot, [...community]);
+    } else if (decision === 'call') {
+      const newPot = newPlayerPot + betAmount;
+      setPot(newPot);
       setDealerBet(dealerBet + betAmount);
-      advanceStage(newPot + betAmount);
+      setDealerStatus('Dealer calls.');
+      advanceStage(newPot, [...community]);
     } else {
-      setDealerFolded(true);
-      finishHand(newPot, false, true);
+      // Dealer folds
+      setDealerStatus('Dealer folds!');
+      finishHand(newPlayerPot, false, true);
     }
   };
 
   const doCheck = () => {
-    advanceStage(pot);
+    const decision = dealerDecision(dealerHole, community);
+    if (decision === 'raise') {
+      const dealerRaise = betAmount;
+      const newPot = pot + dealerRaise * 2;
+      setPot(newPot);
+      setDealerBet(dealerBet + dealerRaise);
+      setDealerStatus(`Dealer raises ${dealerRaise}!`);
+      advanceStage(newPot, [...community]);
+    } else {
+      setDealerStatus('Dealer checks.');
+      advanceStage(pot, [...community]);
+    }
   };
 
   const doFold = () => {
@@ -87,20 +112,25 @@ export default function Poker({ tokens, setTokens, onBack }) {
     finishHand(pot, true, false);
   };
 
-  const advanceStage = (currentPot) => {
+  const advanceStage = (currentPot, currentCommunity) => {
     if (stage === STAGES.PREFLOP) {
-      setCommunity([deck[0], deck[1], deck[2]]);
+      const newCommunity = [deck[0], deck[1], deck[2]];
+      setCommunity(newCommunity);
       setDeck(deck.slice(3));
       setStage(STAGES.FLOP);
+      setDealerStatus('');
     } else if (stage === STAGES.FLOP) {
-      setCommunity(prev => [...prev, deck[0]]);
+      const newCommunity = [...currentCommunity, deck[0]];
+      setCommunity(newCommunity);
       setDeck(deck.slice(1));
       setStage(STAGES.TURN);
+      setDealerStatus('');
     } else if (stage === STAGES.TURN) {
-      const newCommunity = [...community, deck[0]];
+      const newCommunity = [...currentCommunity, deck[0]];
       setCommunity(newCommunity);
       setDeck(deck.slice(1));
       setStage(STAGES.RIVER);
+      setDealerStatus('');
     } else if (stage === STAGES.RIVER) {
       finishHand(currentPot, false, false);
     }
@@ -194,7 +224,7 @@ export default function Poker({ tokens, setTokens, onBack }) {
       {/* Dealer hand */}
       {dealerHole.length > 0 && (
         <div style={S.section}>
-          <div style={S.sectionLabel}>◈ Dealer</div>
+          <div style={S.sectionLabel}>◈ Dealer {dealerStatus && <span style={{ color: '#ffaa00', fontSize: '0.65rem', marginLeft: '0.5rem' }}>— {dealerStatus}</span>}</div>
           <div style={S.cardRow}>
             {stage === STAGES.SHOWDOWN && !folded
               ? dealerHole.map((card, i) => renderCard(card, i))
@@ -228,14 +258,11 @@ export default function Poker({ tokens, setTokens, onBack }) {
       {isPlaying && (
         <div style={S.section}>
           <div style={S.sectionLabel}>◈ Your Action — {stage.toUpperCase()}</div>
-
-          {/* Bet sizing */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
             {[5, 10, 20, 50].filter(b => b <= tokens).map(b => (
               <button key={b} onClick={() => setBetAmount(b)} style={S.betBtn(betAmount === b)}>{b}</button>
             ))}
           </div>
-
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {canCheck
               ? <button onClick={doCheck} style={S.btn('#00ff88', false)}>CHECK</button>
@@ -244,7 +271,6 @@ export default function Poker({ tokens, setTokens, onBack }) {
             <button onClick={doRaise} disabled={tokens < betAmount} style={S.btn('#ffaa00', tokens < betAmount)}>RAISE {betAmount}</button>
             <button onClick={doFold} style={S.btn('#ff4400', false)}>FOLD</button>
           </div>
-
           {status && <div style={{ color: '#ff4444', fontSize: '0.75rem', letterSpacing: '2px', marginTop: '0.75rem' }}>⚡ {status}</div>}
         </div>
       )}

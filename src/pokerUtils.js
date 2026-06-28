@@ -43,7 +43,6 @@ function isStraight(ranks) {
   for (let i = 0; i <= sorted.length - 5; i++) {
     if (sorted[i + 4] - sorted[i] === 4 && new Set(sorted.slice(i, i + 5)).size === 5) return true;
   }
-  // Ace-low straight
   if (sorted.includes(14)) {
     const low = sorted.map(r => r === 14 ? 1 : r).sort((a, b) => a - b);
     for (let i = 0; i <= low.length - 5; i++) {
@@ -53,9 +52,12 @@ function isStraight(ranks) {
   return false;
 }
 
-// Returns a score array for comparison: [handRank, ...tiebreakers]
 export function evaluateHand(holeCards, communityCards) {
   const all = [...holeCards, ...communityCards];
+  if (all.length < 5) {
+    // Not enough cards yet — score hole cards only
+    return scoreHoleOnly(holeCards);
+  }
   const combos = getCombinations(all, 5);
   let best = null;
   for (const combo of combos) {
@@ -63,6 +65,13 @@ export function evaluateHand(holeCards, communityCards) {
     if (!best || compareScores(score, best) > 0) best = score;
   }
   return best;
+}
+
+function scoreHoleOnly(holeCards) {
+  const ranks = holeCards.map(c => cardRank(c.value)).sort((a, b) => b - a);
+  const isPair = holeCards[0].value === holeCards[1].value;
+  if (isPair) return [1, ranks[0], ranks[1]];
+  return [0, ...ranks];
 }
 
 function getCombinations(arr, k) {
@@ -130,23 +139,37 @@ export function getHandName(score) {
   return names[score[0]] || 'High Card';
 }
 
-// ─── Dealer AI (Rule-Based) ───────────────────────────────────────────────────
-export function dealerShouldCall(holeCards, community, pot, callAmount) {
-  const score = evaluateHand(holeCards, community.length >= 2 ? community : []);
+// ─── Dealer AI (Aggressive Rule-Based) ───────────────────────────────────────
+export function dealerDecision(holeCards, community) {
+  const score = evaluateHand(holeCards, community);
   const handStrength = score ? score[0] : 0;
+  const highCard = Math.max(...holeCards.map(c => cardRank(c.value)));
+  const isPair = holeCards[0].value === holeCards[1].value;
+  const isSuited = holeCards[0].suit === holeCards[1].suit;
 
-  // Pre-flop: call with any pair or high cards
+  // Pre-flop
   if (community.length === 0) {
-    const ranks = holeCards.map(c => cardRank(c.value));
-    const isPair = holeCards[0].value === holeCards[1].value;
-    const highCard = Math.max(...ranks);
-    return isPair || highCard >= 10;
+    if (isPair && cardRank(holeCards[0].value) >= 10) return 'raise'; // High pair — raise
+    if (isPair) return 'call';                                          // Low pair — call
+    if (highCard >= 13) return 'raise';                                 // King or Ace high — raise
+    if (highCard >= 11 && isSuited) return 'call';                     // Suited connectors — call
+    if (highCard >= 10) return 'call';                                  // Decent hand — call
+    if (Math.random() < 0.2) return 'call';                            // Bluff 20% of the time
+    return 'fold';
   }
 
-  // Post-flop: call with pair or better
-  if (community.length >= 3) {
-    return handStrength >= 1;
-  }
+  // Flop, Turn, River
+  if (handStrength >= 3) return 'raise';  // Three of a kind or better — raise
+  if (handStrength === 2) return 'raise'; // Two pair — raise
+  if (handStrength === 1) return 'call';  // One pair — call
+  if (highCard >= 13) return 'call';      // Ace/King high — call
+  if (Math.random() < 0.15) return 'raise'; // Bluff 15% of the time
+  if (Math.random() < 0.3) return 'call';   // Call 30% on weak hands
+  return 'fold';
+}
 
-  return handStrength >= 1;
+// Keep for backwards compatibility
+export function dealerShouldCall(holeCards, community) {
+  const decision = dealerDecision(holeCards, community);
+  return decision !== 'fold';
 }
