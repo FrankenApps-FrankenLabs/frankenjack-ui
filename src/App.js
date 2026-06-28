@@ -252,9 +252,7 @@ export default function App() {
             {bothChecked ? '⚡ ENTER FRANKENJACK' : '🔒 TICK BOTH TO CONTINUE'}
           </button>
         </div>
-      ) : outOfTokens && game === null ? (
-        outOfTokensScreen
-      ) : game === 'blackjack' ? (
+            ) : game === 'blackjack' ? (
         <Blackjack tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
       ) : game === 'slots' ? (
         <Slots tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
