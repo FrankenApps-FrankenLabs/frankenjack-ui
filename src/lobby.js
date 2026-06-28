@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Lobby({ walletAddress, tokens, canClaim, countdown, onClaim, onPaidRefill, loading, status, onSelect }) {
+export default function Lobby({ walletAddress, tokens, canClaim, countdown, onClaim, onPaidRefill, loading, status, onSelect, onConnect }) {
   const S = {
     lobby: { display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: '700px', gap: '2rem', zIndex: 1, position: 'relative' },
     balanceBar: { background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '12px', padding: '0.75rem 1.5rem', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', boxShadow: '0 0 20px rgba(0,255,100,0.1)' },
@@ -24,7 +24,11 @@ export default function Lobby({ walletAddress, tokens, canClaim, countdown, onCl
     <div style={S.lobby}>
       {/* Token bar */}
       <div style={S.balanceBar}>
-        <span style={S.walletText}>✅ {walletAddress.slice(0,6)}...{walletAddress.slice(-4)}</span>
+        {walletAddress ? (
+          <span style={S.walletText}>✅ {walletAddress.slice(0,6)}...{walletAddress.slice(-4)}</span>
+        ) : (
+          <span style={{ ...S.walletText, color: '#444' }}>👤 GUEST</span>
+        )}
         <span style={S.tokenText}>🪙 {tokens} TOKENS</span>
         <div style={S.btnRow}>
           {canClaim ? (
@@ -35,6 +39,9 @@ export default function Lobby({ walletAddress, tokens, canClaim, countdown, onCl
           <button onClick={onPaidRefill} disabled={loading} style={S.smallBtn('#ff6600', loading)}>
             {loading ? '...' : '50 TOKENS — 30 LCAI'}
           </button>
+          {!walletAddress && (
+            <button onClick={onConnect} style={S.smallBtn('#444', false)}>🔗 CONNECT</button>
+          )}
         </div>
       </div>
 

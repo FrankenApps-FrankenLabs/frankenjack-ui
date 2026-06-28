@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserProvider, parseEther } from 'ethers';
-import Lobby from './lobby';
-import Blackjack from './blackjack';
-import Slots from './slots';
+import Lobby from './Lobby';
+import Blackjack from './Blackjack';
+import Slots from './Slots';
 
 const RECEIVING_WALLET = '0x11cEF17C7581Df308179919e80Be5Dbb6B1CcC4B';
 const LCAI_CHAIN = {
@@ -15,31 +15,24 @@ const LCAI_CHAIN = {
 const FREE_TOKENS = 30;
 const PAID_TOKENS = 50;
 const PAID_COST = '30';
+const GUEST_KEY = 'fj_guest_tokens';
+const GUEST_CLAIM_KEY = 'fj_guest_lastclaim';
 
 function getStorageKey(wallet) { return `fj_tokens_${wallet.toLowerCase()}`; }
 function getLastClaimKey(wallet) { return `fj_lastclaim_${wallet.toLowerCase()}`; }
 
-function loadTokens(wallet) {
-  const val = localStorage.getItem(getStorageKey(wallet));
-  return val !== null ? parseInt(val) : null;
-}
-
-function saveTokens(wallet, amount) {
-  localStorage.setItem(getStorageKey(wallet), amount.toString());
-}
-
-function canFreeClaim(wallet) {
-  const last = localStorage.getItem(getLastClaimKey(wallet));
+function canFreeClaim(key) {
+  const last = localStorage.getItem(key);
   if (!last) return true;
   return Date.now() - parseInt(last) >= 24 * 60 * 60 * 1000;
 }
 
-function saveLastClaim(wallet) {
-  localStorage.setItem(getLastClaimKey(wallet), Date.now().toString());
+function saveLastClaim(key) {
+  localStorage.setItem(key, Date.now().toString());
 }
 
-function freeClaimCountdown(wallet) {
-  const last = localStorage.getItem(getLastClaimKey(wallet));
+function freeClaimCountdown(key) {
+  const last = localStorage.getItem(key);
   if (!last) return null;
   const remaining = 24 * 60 * 60 * 1000 - (Date.now() - parseInt(last));
   if (remaining <= 0) return null;
@@ -70,7 +63,18 @@ const NeonPanel = ({ flip }) => (
 
 export default function App() {
   const [walletAddress, setWalletAddress] = useState(null);
-  const [tokens, setTokens] = useState(0);
+  const [tokens, setTokens] = useState(() => {
+    // Guest tokens from localStorage
+    const saved = localStorage.getItem(GUEST_KEY);
+    if (saved !== null) return parseInt(saved);
+    // First visit — give free tokens
+    if (canFreeClaim(GUEST_CLAIM_KEY)) {
+      localStorage.setItem(GUEST_KEY, FREE_TOKENS.toString());
+      saveLastClaim(GUEST_CLAIM_KEY);
+      return FREE_TOKENS;
+    }
+    return 0;
+  });
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
@@ -85,10 +89,22 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const updateTokens = useCallback((wallet, amount) => {
-    saveTokens(wallet, amount);
-    setTokens(amount);
-  }, []);
+  // Save guest tokens to localStorage whenever they change
+  useEffect(() => {
+    if (!walletAddress) {
+      localStorage.setItem(GUEST_KEY, tokens.toString());
+    }
+  }, [tokens, walletAddress]);
+
+  const updateTokens = useCallback((val) => {
+    const newVal = typeof val === 'function' ? val(tokens) : val;
+    if (walletAddress) {
+      localStorage.setItem(getStorageKey(walletAddress), newVal.toString());
+    } else {
+      localStorage.setItem(GUEST_KEY, newVal.toString());
+    }
+    setTokens(newVal);
+  }, [tokens, walletAddress]);
 
   const connectWallet = async () => {
     try {
@@ -101,23 +117,23 @@ export default function App() {
       }
       const wallet = accounts[0];
       setWalletAddress(wallet);
-      const saved = loadTokens(wallet);
+      // Load wallet tokens if they exist, otherwise carry over guest tokens
+      const saved = localStorage.getItem(getStorageKey(wallet));
       if (saved !== null) {
-        setTokens(saved);
-      } else {
-        // First time — give free tokens
-        updateTokens(wallet, FREE_TOKENS);
-        saveLastClaim(wallet);
+        setTokens(parseInt(saved));
       }
+      // Clear guest tokens now wallet is connected
+      localStorage.removeItem(GUEST_KEY);
     } catch (err) {
       setStatus('Error: ' + err.message);
     }
   };
 
   const doFreeClaim = () => {
+    const key = walletAddress ? getLastClaimKey(walletAddress) : GUEST_CLAIM_KEY;
     const newTotal = tokens + FREE_TOKENS;
-    updateTokens(walletAddress, newTotal);
-    saveLastClaim(walletAddress);
+    updateTokens(newTotal);
+    saveLastClaim(key);
     setStatus('30 free tokens added!');
     setTimeout(() => setStatus(''), 2000);
   };
@@ -133,7 +149,7 @@ export default function App() {
       setStatus('Processing...');
       await tx.wait();
       const newTotal = tokens + PAID_TOKENS;
-      updateTokens(walletAddress, newTotal);
+      updateTokens(newTotal);
       setStatus('50 tokens added!');
       setTimeout(() => setStatus(''), 2000);
     } catch (err) {
@@ -142,9 +158,11 @@ export default function App() {
     setLoading(false);
   };
 
+  const claimKey = walletAddress ? getLastClaimKey(walletAddress) : GUEST_CLAIM_KEY;
+  const canClaim = canFreeClaim(claimKey);
+  const countdown = freeClaimCountdown(claimKey);
   const bothChecked = ageCheck && entertainmentCheck;
-  const countdown = walletAddress ? freeClaimCountdown(walletAddress) : null;
-  const canClaim = walletAddress ? canFreeClaim(walletAddress) : false;
+  const outOfTokens = tokens <= 0;
 
   const S = {
     app: { minHeight: '100vh', background: '#030d05', color: '#e0ffe8', fontFamily: "'Courier New', monospace", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative', overflow: 'hidden' },
@@ -157,12 +175,49 @@ export default function App() {
     checkbox: (checked) => ({ width: '20px', height: '20px', flexShrink: 0, marginTop: '2px', border: `2px solid ${checked ? '#00ff88' : '#444'}`, borderRadius: '4px', background: checked ? 'rgba(0,255,136,0.2)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: checked ? '0 0 10px #00ff8855' : 'none' }),
   };
 
+  // Out of tokens screen
+  const outOfTokensScreen = (
+    <div style={{ ...S.section, textAlign: 'center' }}>
+      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>😬</div>
+      <div style={{ color: '#ff4400', fontSize: '0.85rem', letterSpacing: '2px', marginBottom: '1rem', textShadow: '0 0 8px #ff4400' }}>OUT OF TOKENS</div>
+      {canClaim && !walletAddress && (
+        <>
+          <div style={{ color: '#666', fontSize: '0.75rem', letterSpacing: '1px', lineHeight: '1.6', marginBottom: '1rem' }}>
+            Connect your wallet to claim your free daily tokens.
+          </div>
+          <button onClick={connectWallet} style={{ ...S.btn('#00ff88', false), flex: 'none', width: '100%', marginBottom: '0.5rem' }}>
+            ⚡ CONNECT WALLET — CLAIM 30 FREE
+          </button>
+        </>
+      )}
+      {canClaim && walletAddress && (
+        <button onClick={doFreeClaim} style={{ ...S.btn('#00ff88', false), flex: 'none', width: '100%', marginBottom: '0.5rem' }}>
+          🎁 CLAIM FREE 30 TOKENS
+        </button>
+      )}
+      {!canClaim && (
+        <div style={{ color: '#444', fontSize: '0.75rem', letterSpacing: '1px', lineHeight: '1.6', marginBottom: '1rem' }}>
+          {walletAddress ? `Free tokens available in ${countdown}` : `Come back in ${countdown} for free tokens, or buy more now.`}
+        </div>
+      )}
+      {!walletAddress && (
+        <button onClick={connectWallet} style={{ ...S.btn('#444', false), flex: 'none', width: '100%', marginBottom: '0.5rem', fontSize: '0.75rem' }}>
+          🔗 CONNECT WALLET
+        </button>
+      )}
+      <button onClick={doPaidRefill} disabled={loading || !walletAddress} style={{ ...S.btn('#ff6600', loading || !walletAddress), flex: 'none', width: '100%' }}>
+        {loading ? '⚡ PROCESSING...' : !walletAddress ? 'CONNECT WALLET TO BUY' : '💎 BUY 50 TOKENS — 30 LCAI'}
+      </button>
+      {status && <div style={{ color: '#00ff88', fontSize: '0.75rem', letterSpacing: '2px', marginTop: '0.75rem' }}>⚡ {status}</div>}
+    </div>
+  );
+
   const mainContent = (
     <>
       {!acknowledged ? (
         <div style={S.section}>
           <div style={S.sectionLabel}>◈ Before You Play</div>
-          <div style={{ color: '#666', fontSize: '0.75rem', letterSpacing: '2px', marginBottom: '1.5rem', lineHeight: '1.8' }}>Please confirm the following before connecting your wallet.</div>
+          <div style={{ color: '#666', fontSize: '0.75rem', letterSpacing: '2px', marginBottom: '1.5rem', lineHeight: '1.8' }}>Please confirm the following before playing.</div>
           <div style={S.checkRow} onClick={() => setAgeCheck(!ageCheck)}>
             <div style={S.checkbox(ageCheck)}>{ageCheck && <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 900 }}>✓</span>}</div>
             <div style={{ color: ageCheck ? '#e0ffe8' : '#666', fontSize: '0.82rem', letterSpacing: '1px', lineHeight: '1.6', transition: 'color 0.2s' }}>
@@ -179,24 +234,18 @@ export default function App() {
             {bothChecked ? '⚡ ENTER FRANKENJACK' : '🔒 TICK BOTH TO CONTINUE'}
           </button>
         </div>
-      ) : !walletAddress ? (
-        <div style={{ ...S.section, textAlign: 'center' }}>
-          <div style={{ color: '#00ff88', fontSize: '3rem', marginBottom: '1rem', textShadow: '0 0 20px #00ff88' }}>🃏</div>
-          <div style={{ color: '#00ff88', letterSpacing: '3px', marginBottom: '0.5rem', fontSize: '0.85rem' }}>CONNECT YOUR WALLET TO PLAY</div>
-          <div style={{ color: '#444', fontSize: '0.7rem', letterSpacing: '2px', marginBottom: '1.5rem' }}>30 free tokens on arrival · Refreshes every 24hrs</div>
-          <button onClick={connectWallet} style={S.btn('#00ff88', false)}>⚡ Connect Wallet</button>
-          {status && <div style={{ color: '#ff4444', fontSize: '0.75rem', marginTop: '0.75rem', letterSpacing: '2px' }}>⚡ {status}</div>}
-        </div>
+      ) : outOfTokens && game === null ? (
+        outOfTokensScreen
       ) : game === 'blackjack' ? (
         <Blackjack
           tokens={tokens}
-          setTokens={(val) => updateTokens(walletAddress, val)}
+          setTokens={updateTokens}
           onBack={() => setGame(null)}
         />
       ) : game === 'slots' ? (
         <Slots
           tokens={tokens}
-          setTokens={(val) => updateTokens(walletAddress, val)}
+          setTokens={updateTokens}
           onBack={() => setGame(null)}
         />
       ) : (
@@ -210,6 +259,7 @@ export default function App() {
           loading={loading}
           status={status}
           onSelect={g => setGame(g)}
+          onConnect={connectWallet}
         />
       )}
     </>
