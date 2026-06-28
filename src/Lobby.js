@@ -78,7 +78,7 @@ export default function Lobby({ walletAddress, tokens, pokerChips, canClaim, cou
 
         {/* Texas Hold'em Normal — Coming Soon */}
         <div style={S.gameCardDisabled}>
-          <div style={{ ...S.gameIcon, filter: 'grayscale(1)', opacity: 0.3 }}>🂡</div>
+          <div style={{ ...S.gameIcon, filter: 'grayscale(1)', opacity: 0.3 }}>🃟</div>
           <div style={{ ...S.gameTitle('#444'), textShadow: 'none' }}>Texas Hold'em</div>
           <div style={{ ...S.gameDesc, color: '#333' }}>Normal Table · Token Bets<br />Rule-Based Dealer</div>
           <button style={S.playBtnDisabled} disabled>▶ PLAY</button>
