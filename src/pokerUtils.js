@@ -83,8 +83,6 @@ function scoreHand(cards) {
 
   if (flush && straight) return [8, ...ranks];
   if (countVals[0] === 4) {
-    const quad = parseInt(Object.keys(counts).find(k => counts[k] === 4));
-    const kicker = parseInt(Object.keys(counts).find(k => counts[k] === 1));
     return [7, cardRank(Object.keys(counts).find(k => counts[k] === 4)), cardRank(Object.keys(counts).find(k => counts[k] !== 4))];
   }
   if (countVals[0] === 3 && countVals[1] === 2) {

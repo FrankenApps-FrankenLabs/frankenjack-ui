@@ -19,7 +19,7 @@ export default function Poker({ tokens, setTokens, onBack }) {
   const [result, setResult] = useState(null);
   const [status, setStatus] = useState('');
   const [folded, setFolded] = useState(false);
-  const [dealerFolded, setDealerFolded] = useState(false);
+  const [, setDealerFolded] = useState(false);
   const [glitch, setGlitch] = useState(false);
 
   const triggerGlitch = () => { setGlitch(true); setTimeout(() => setGlitch(false), 600); };
