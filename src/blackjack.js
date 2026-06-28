@@ -63,9 +63,7 @@ export default function Blackjack({ tokens, setTokens, onBack }) {
   const [glitch, setGlitch] = useState(false);
   const [status, setStatus] = useState('');
 
-  const updateTokens = (val) => setTokens(typeof val === 'function' ? val(tokens) : val);
-
-  const dealGame = () => {
+   const dealGame = () => {
     if (tokens < bet) { setStatus('Not enough tokens!'); return; }
     setResults(null); setStatus(''); setSplitCards(null); setActiveHand(0);
     const newDeck = createDeck();
