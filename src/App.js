@@ -3,6 +3,7 @@ import { BrowserProvider, parseEther } from 'ethers';
 import Lobby from './Lobby';
 import Blackjack from './Blackjack';
 import Slots from './Slots';
+import Poker from './Poker';
 
 const RECEIVING_WALLET = '0x11cEF17C7581Df308179919e80Be5Dbb6B1CcC4B';
 const BACKEND_URL = 'https://frankenapps-frankenlabs-frankenjack.onrender.com';
@@ -219,6 +220,8 @@ export default function App() {
         <Blackjack tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
       ) : game === 'slots' ? (
         <Slots tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
+      ) : game === 'poker' ? (
+        <Poker tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
       ) : (
         <Lobby
           walletAddress={walletAddress}

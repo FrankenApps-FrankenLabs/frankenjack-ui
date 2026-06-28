@@ -76,13 +76,14 @@ export default function Lobby({ walletAddress, tokens, pokerChips, canClaim, cou
           <button style={S.playBtn('#ff6600')}>▶ PLAY</button>
         </div>
 
-        {/* Texas Hold'em Normal — Coming Soon */}
-        <div style={S.gameCardDisabled}>
-          <div style={{ ...S.gameIcon, filter: 'grayscale(1)', opacity: 0.3 }}>🃟</div>
-          <div style={{ ...S.gameTitle('#444'), textShadow: 'none' }}>Texas Hold'em</div>
-          <div style={{ ...S.gameDesc, color: '#333' }}>Normal Table · Token Bets<br />Rule-Based Dealer</div>
-          <button style={S.playBtnDisabled} disabled>▶ PLAY</button>
-          <div style={S.comingSoon}>COMING SOON</div>
+        {/* Texas Hold'em Normal — LIVE */}
+        <div style={S.gameCard('#00aaff')} onClick={() => onSelect('poker')}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+          <div style={S.gameIcon}>🎴</div>
+          <div style={S.gameTitle('#00aaff')}>Texas Hold'em</div>
+          <div style={S.gameDesc}>Normal Table · Token Bets<br />Rule-Based Dealer</div>
+          <button style={S.playBtn('#00aaff')}>▶ PLAY</button>
         </div>
 
         {/* Texas Hold'em Pro — Coming Soon */}
