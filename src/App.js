@@ -182,8 +182,7 @@ export default function App() {
   const canClaim = canFreeClaim(GUEST_CLAIM_KEY);
   const countdown = freeClaimCountdown(GUEST_CLAIM_KEY);
   const bothChecked = ageCheck && entertainmentCheck;
-  const outOfTokens = tokens <= 0;
-
+  
   const S = {
     app: { minHeight: '100vh', background: '#030d05', color: '#e0ffe8', fontFamily: "'Courier New', monospace", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative', overflow: 'hidden' },
     scanlines: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)', pointerEvents: 'none', zIndex: 999 },
@@ -194,20 +193,6 @@ export default function App() {
     checkbox: (checked) => ({ width: '20px', height: '20px', flexShrink: 0, marginTop: '2px', border: `2px solid ${checked ? '#00ff88' : '#444'}`, borderRadius: '4px', background: checked ? 'rgba(0,255,136,0.2)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: checked ? '0 0 10px #00ff8855' : 'none' }),
   };
 
-  const outOfTokensScreen = (
-    <div style={{ ...S.section, textAlign: 'center' }}>
-      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>😬</div>
-      <div style={{ color: '#ff4400', fontSize: '0.85rem', letterSpacing: '2px', marginBottom: '1rem', textShadow: '0 0 8px #ff4400' }}>OUT OF TOKENS</div>
-      {canClaim && !walletAddress && (
-        <>
-          <div style={{ color: '#666', fontSize: '0.75rem', letterSpacing: '1px', lineHeight: '1.6', marginBottom: '1rem' }}>
-            Connect your wallet to claim your free daily tokens.
-          </div>
-          <button onClick={connectWallet} style={{ ...S.btn('#00ff88', false), flex: 'none', width: '100%', marginBottom: '0.5rem' }}>
-            ⚡ CONNECT WALLET — CLAIM 30 FREE
-          </button>
-        </>
-      )}
       {canClaim && walletAddress && (
         <button onClick={doFreeClaim} style={{ ...S.btn('#00ff88', false), flex: 'none', width: '100%', marginBottom: '0.5rem' }}>
           🎁 CLAIM FREE 30 TOKENS
