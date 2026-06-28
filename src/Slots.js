@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const SERVER_URL = 'https://frankenbet-server.onrender.com';
+const SERVER_URL = 'https://frankenapps-frankenlabs-frankenjack.onrender.com';
 
 const SYMBOLS = [
   { id: 'cherry',  label: '🍒', name: 'Cherry'       },
@@ -28,7 +28,7 @@ export default function Slots({ tokens, setTokens, onBack }) {
   const animRef = useRef(null);
 
   useEffect(() => {
-    fetch(`${SERVER_URL}/api/health`).then(() => setServerReady(true)).catch(() => setServerReady(true));
+    fetch(`${SERVER_URL}/api/slots/health`).then(() => setServerReady(true)).catch(() => setServerReady(true));
   }, []);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function Slots({ tokens, setTokens, onBack }) {
     if (freeSpins > 0) setFreeSpins(f => f - 1);
 
     try {
-      const res = await fetch(`${SERVER_URL}/api/spin`, {
+      const res = await fetch(`${SERVER_URL}/api/slots/spin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bet, freeSpins: freeSpins > 0 }),
@@ -103,7 +103,6 @@ export default function Slots({ tokens, setTokens, onBack }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
 
-      {/* Top bar */}
       <div style={{ width: '100%', maxWidth: '640px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <button onClick={onBack} style={{ background: 'transparent', border: '1px solid #444', color: '#666', borderRadius: '6px', padding: '0.4rem 1rem', fontSize: '0.7rem', cursor: 'pointer', letterSpacing: '3px', fontFamily: "'Courier New', monospace", whiteSpace: 'nowrap' }}>← LOBBY</button>
         <div style={{ flex: 1, background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -116,7 +115,6 @@ export default function Slots({ tokens, setTokens, onBack }) {
         <div style={{ color: '#444', fontSize: '0.7rem', letterSpacing: '3px', marginBottom: '1rem', fontFamily: "'Courier New', monospace" }}>⚡ WARMING UP SERVER...</div>
       )}
 
-      {/* Reels */}
       <div style={S.section}>
         <div style={S.sectionLabel}>◈ Slots — Center Payline</div>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginBottom: '1rem' }}>
@@ -161,7 +159,6 @@ export default function Slots({ tokens, setTokens, onBack }) {
         )}
       </div>
 
-      {/* Bet + Spin */}
       <div style={S.section}>
         <div style={S.sectionLabel}>◈ {freeSpins > 0 ? `Free Spins — ${freeSpins} remaining` : 'Place Your Bet (Tokens)'}</div>
         {freeSpins === 0 && (
@@ -180,7 +177,6 @@ export default function Slots({ tokens, setTokens, onBack }) {
         </button>
       </div>
 
-      {/* Paytable */}
       <div style={S.section}>
         <div style={S.sectionLabel}>◈ Paytable (per 1 token bet)</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem 1rem' }}>
