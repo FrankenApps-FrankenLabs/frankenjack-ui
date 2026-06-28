@@ -86,7 +86,6 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Save guest tokens to localStorage whenever they change
   useEffect(() => {
     if (!walletAddress) {
       localStorage.setItem(GUEST_KEY, tokens.toString());
@@ -115,14 +114,6 @@ export default function App() {
     }
   }, [tokens, pokerChips, walletAddress, syncBalanceToBackend]);
 
-  const updatePokerChips = useCallback(async (val) => {
-    const newVal = typeof val === 'function' ? val(pokerChips) : val;
-    setPokerChips(newVal);
-    if (walletAddress) {
-      await syncBalanceToBackend(walletAddress, tokens, newVal);
-    }
-  }, [tokens, pokerChips, walletAddress, syncBalanceToBackend]);
-
   const connectWallet = async () => {
     try {
       if (!window.ethereum) throw new Error('MetaMask not found');
@@ -134,14 +125,10 @@ export default function App() {
       }
       const wallet = accounts[0];
       setWalletAddress(wallet);
-
-      // Fetch or create player from backend
       const res = await fetch(`${BACKEND_URL}/api/players/${wallet}`);
       const player = await res.json();
       setTokens(player.tokens);
       setPokerChips(player.poker_chips);
-
-      // Clear guest tokens
       localStorage.removeItem(GUEST_KEY);
     } catch (err) {
       setStatus('Error: ' + err.message);
@@ -149,9 +136,8 @@ export default function App() {
   };
 
   const doFreeClaim = async () => {
-    const key = GUEST_CLAIM_KEY;
     const newTotal = tokens + FREE_TOKENS;
-    saveLastClaim(key);
+    saveLastClaim(GUEST_CLAIM_KEY);
     if (walletAddress) {
       await syncBalanceToBackend(walletAddress, newTotal, pokerChips);
     } else {
@@ -172,7 +158,6 @@ export default function App() {
       const tx = await signer.sendTransaction({ to: RECEIVING_WALLET, value: parseEther(PAID_COST) });
       setStatus('Processing...');
       await tx.wait();
-
       if (walletAddress) {
         const res = await fetch(`${BACKEND_URL}/api/payments/refill`, {
           method: 'POST',
@@ -194,9 +179,8 @@ export default function App() {
     setLoading(false);
   };
 
-  const claimKey = GUEST_CLAIM_KEY;
-  const canClaim = canFreeClaim(claimKey);
-  const countdown = freeClaimCountdown(claimKey);
+  const canClaim = canFreeClaim(GUEST_CLAIM_KEY);
+  const countdown = freeClaimCountdown(GUEST_CLAIM_KEY);
   const bothChecked = ageCheck && entertainmentCheck;
   const outOfTokens = tokens <= 0;
 
@@ -205,7 +189,6 @@ export default function App() {
     scanlines: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)', pointerEvents: 'none', zIndex: 999 },
     grid: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'linear-gradient(rgba(0,255,100,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,100,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none', zIndex: 0 },
     section: { background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '600px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(0,255,100,0.1)' },
-    sectionLabel: { color: '#00ff88', fontSize: '0.7rem', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 0 8px #00ff88', marginBottom: '0.5rem' },
     btn: (color, disabled) => ({ background: disabled ? 'rgba(255,255,255,0.05)' : 'transparent', border: `2px solid ${disabled ? '#333' : color}`, color: disabled ? '#444' : color, borderRadius: '6px', padding: '0.75rem 1.5rem', fontSize: '0.9rem', fontWeight: 900, letterSpacing: '3px', textTransform: 'uppercase', cursor: disabled ? 'default' : 'pointer', textShadow: disabled ? 'none' : `0 0 10px ${color}`, boxShadow: disabled ? 'none' : `0 0 15px ${color}33`, transition: 'all 0.2s', flex: 1, minWidth: '100px', fontFamily: "'Courier New', monospace" }),
     checkRow: { display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1rem', cursor: 'pointer' },
     checkbox: (checked) => ({ width: '20px', height: '20px', flexShrink: 0, marginTop: '2px', border: `2px solid ${checked ? '#00ff88' : '#444'}`, borderRadius: '4px', background: checked ? 'rgba(0,255,136,0.2)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: checked ? '0 0 10px #00ff8855' : 'none' }),
@@ -251,7 +234,7 @@ export default function App() {
     <>
       {!acknowledged ? (
         <div style={S.section}>
-          <div style={S.sectionLabel}>◈ Before You Play</div>
+          <div style={{ color: '#00ff88', fontSize: '0.7rem', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 0 8px #00ff88', marginBottom: '0.5rem' }}>◈ Before You Play</div>
           <div style={{ color: '#666', fontSize: '0.75rem', letterSpacing: '2px', marginBottom: '1.5rem', lineHeight: '1.8' }}>Please confirm the following before playing.</div>
           <div style={S.checkRow} onClick={() => setAgeCheck(!ageCheck)}>
             <div style={S.checkbox(ageCheck)}>{ageCheck && <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 900 }}>✓</span>}</div>
@@ -272,17 +255,9 @@ export default function App() {
       ) : outOfTokens && game === null ? (
         outOfTokensScreen
       ) : game === 'blackjack' ? (
-        <Blackjack
-          tokens={tokens}
-          setTokens={updateTokens}
-          onBack={() => setGame(null)}
-        />
+        <Blackjack tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
       ) : game === 'slots' ? (
-        <Slots
-          tokens={tokens}
-          setTokens={updateTokens}
-          onBack={() => setGame(null)}
-        />
+        <Slots tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
       ) : (
         <Lobby
           walletAddress={walletAddress}
