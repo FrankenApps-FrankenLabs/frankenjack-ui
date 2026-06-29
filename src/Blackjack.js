@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 
+const BACKEND_URL = 'https://frankenapps-frankenlabs-frankenjack.onrender.com';
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
@@ -37,20 +38,20 @@ function getResultObj(pCards, dCards, betAmount) {
   const pTotal = handTotal(pCards); const dTotal = handTotal(dCards);
   const playerBJ = pTotal === 21 && pCards.length === 2;
   const dealerBJ = dTotal === 21 && dCards.length === 2;
-  let payout = 0; let label, color, sub;
+  let payout = 0; let label, color, sub, win = false;
   if (playerBJ && dealerBJ) { label = '🔄 PUSH'; color = '#ffaa00'; sub = 'Bet returned'; payout = betAmount; }
-  else if (playerBJ) { payout = betAmount + Math.floor(betAmount * 1.5); label = '🃏 BLACKJACK!'; color = '#00ff88'; sub = `+${Math.floor(betAmount * 1.5)} tokens`; }
+  else if (playerBJ) { payout = betAmount + Math.floor(betAmount * 1.5); label = '🃏 BLACKJACK!'; color = '#00ff88'; sub = `+${Math.floor(betAmount * 1.5)} tokens`; win = true; }
   else if (pTotal > 21) { label = '💀 BUST'; color = '#ff4400'; sub = `Lost ${betAmount} tokens`; payout = 0; }
-  else if (dTotal > 21) { payout = betAmount * 2; label = '⚡ DEALER BUSTS!'; color = '#00ff88'; sub = `+${betAmount} tokens`; }
-  else if (pTotal > dTotal) { payout = betAmount * 2; label = '⚡ YOU WIN!'; color = '#00ff88'; sub = `+${betAmount} tokens`; }
+  else if (dTotal > 21) { payout = betAmount * 2; label = '⚡ DEALER BUSTS!'; color = '#00ff88'; sub = `+${betAmount} tokens`; win = true; }
+  else if (pTotal > dTotal) { payout = betAmount * 2; label = '⚡ YOU WIN!'; color = '#00ff88'; sub = `+${betAmount} tokens`; win = true; }
   else if (pTotal === dTotal) { label = '🔄 PUSH'; color = '#ffaa00'; sub = 'Bet returned'; payout = betAmount; }
   else { label = '💀 YOU LOSE'; color = '#ff4400'; sub = `Lost ${betAmount} tokens`; payout = 0; }
-  return { label, color, sub, payout };
+  return { label, color, sub, payout, win };
 }
 
 const GAME_STATE = { IDLE: 'idle', PLAYING: 'playing', SPLIT_PLAYING: 'split_playing', FINISHED: 'finished' };
 
-export default function Blackjack({ tokens, setTokens, onBack }) {
+export default function Blackjack({ tokens, setTokens, onBack, wallet }) {
   const [gameState, setGameState] = useState(GAME_STATE.IDLE);
   const [deck, setDeck] = useState([]);
   const [playerCards, setPlayerCards] = useState([]);
@@ -63,7 +64,20 @@ export default function Blackjack({ tokens, setTokens, onBack }) {
   const [glitch, setGlitch] = useState(false);
   const [status, setStatus] = useState('');
 
-   const dealGame = () => {
+  const updateLeaderboard = async (wins, hands) => {
+    if (!wallet) return;
+    try {
+      await fetch(`${BACKEND_URL}/api/leaderboard/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet, blackjack_wins: wins, total_hands: hands })
+      });
+    } catch (err) {
+      console.error('Leaderboard update failed:', err);
+    }
+  };
+
+  const dealGame = () => {
     if (tokens < bet) { setStatus('Not enough tokens!'); return; }
     setResults(null); setStatus(''); setSplitCards(null); setActiveHand(0);
     const newDeck = createDeck();
@@ -129,6 +143,9 @@ export default function Blackjack({ tokens, setTokens, onBack }) {
     if (totalPayout > 0) setTokens(tokens + totalPayout);
     setResults(splitResult ? [mainResult, splitResult] : [mainResult]);
     if (mainResult || splitResult) { setGlitch(true); setTimeout(() => setGlitch(false), 600); }
+    // Update leaderboard
+    const wins = (mainResult.win ? 1 : 0) + (splitResult?.win ? 1 : 0);
+    updateLeaderboard(wins, 1);
   };
 
   const canSplit = gameState === GAME_STATE.PLAYING && playerCards.length === 2 && splitCards === null && playerCards[0].value === playerCards[1].value && tokens >= currentBet;
@@ -137,12 +154,12 @@ export default function Blackjack({ tokens, setTokens, onBack }) {
 
   const S = {
     section: { background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '600px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(0,255,100,0.1)' },
-    activeSection: { background: 'rgba(0,20,5,0.8)', border: '2px solid #ff6600', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '600px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(255,102,0,0.2)' },
+    activeSection: { background: 'rgba(0,20,5,0.8)', border: '2px solid #ffee00', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '600px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(255,238,0,0.2)' },
     sectionLabel: { color: '#00ff88', fontSize: '0.7rem', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 0 8px #00ff88', marginBottom: '0.5rem' },
-    card: { background: 'rgba(255,255,255,0.95)', borderRadius: '8px', width: '60px', height: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 900, boxShadow: '0 0 15px rgba(0,255,100,0.5), 0 0 30px rgba(255,102,0,0.3)', border: '2px solid rgba(0,255,100,0.5)', flexShrink: 0 },
-    hiddenCard: { background: 'linear-gradient(135deg, #001a05, #002200)', borderRadius: '8px', width: '60px', height: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: '0 0 15px rgba(0,255,100,0.5)', border: '2px solid rgba(255,102,0,0.5)', flexShrink: 0 },
+    card: { background: 'rgba(255,255,255,0.95)', borderRadius: '8px', width: '60px', height: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 900, boxShadow: '0 0 15px rgba(0,255,100,0.5), 0 0 30px rgba(255,238,0,0.3)', border: '2px solid rgba(0,255,100,0.5)', flexShrink: 0 },
+    hiddenCard: { background: 'linear-gradient(135deg, #001a05, #002200)', borderRadius: '8px', width: '60px', height: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: '0 0 15px rgba(0,255,100,0.5)', border: '2px solid rgba(255,238,0,0.5)', flexShrink: 0 },
     cardRow: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', margin: '0.5rem 0' },
-    total: { color: '#ffaa00', fontSize: '1.5rem', fontWeight: 900, textShadow: '0 0 10px #ffaa00', textAlign: 'center', marginTop: '0.5rem' },
+    total: { color: '#ffee00', fontSize: '1.5rem', fontWeight: 900, textShadow: '0 0 10px #ffee00', textAlign: 'center', marginTop: '0.5rem' },
     btn: (color, disabled) => ({ background: disabled ? 'rgba(255,255,255,0.05)' : 'transparent', border: `2px solid ${disabled ? '#333' : color}`, color: disabled ? '#444' : color, borderRadius: '6px', padding: '0.75rem 1.5rem', fontSize: '0.9rem', fontWeight: 900, letterSpacing: '3px', textTransform: 'uppercase', cursor: disabled ? 'default' : 'pointer', textShadow: disabled ? 'none' : `0 0 10px ${color}`, boxShadow: disabled ? 'none' : `0 0 15px ${color}33`, transition: 'all 0.2s', flex: 1, minWidth: '100px', fontFamily: "'Courier New', monospace" }),
     betBtn: (active) => ({ background: active ? 'rgba(0,255,100,0.2)' : 'transparent', border: `2px solid ${active ? '#00ff88' : '#333'}`, color: active ? '#00ff88' : '#666', borderRadius: '6px', padding: '0.5rem 1.25rem', fontSize: '1rem', fontWeight: 900, cursor: 'pointer', textShadow: active ? '0 0 10px #00ff88' : 'none', letterSpacing: '2px', fontFamily: "'Courier New', monospace" }),
     resultOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,2,0.88)', zIndex: 500, flexDirection: 'column', gap: '1rem', cursor: 'pointer' },
@@ -169,7 +186,7 @@ export default function Blackjack({ tokens, setTokens, onBack }) {
         <button onClick={onBack} style={{ background: 'transparent', border: '1px solid #444', color: '#666', borderRadius: '6px', padding: '0.4rem 1rem', fontSize: '0.7rem', cursor: 'pointer', letterSpacing: '3px', fontFamily: "'Courier New', monospace", whiteSpace: 'nowrap' }}>← LOBBY</button>
         <div style={{ flex: 1, background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ color: '#00ff88', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Courier New', monospace" }}>TOKENS</span>
-          <span style={{ color: '#ffaa00', fontSize: '1.1rem', fontWeight: 900, letterSpacing: '2px', fontFamily: "'Courier New', monospace", textShadow: '0 0 10px #ffaa00' }}>🪙 {tokens}</span>
+          <span style={{ color: '#ffee00', fontSize: '1.1rem', fontWeight: 900, letterSpacing: '2px', fontFamily: "'Courier New', monospace", textShadow: '0 0 10px #ffee00' }}>🪙 {tokens}</span>
         </div>
       </div>
 
@@ -189,7 +206,7 @@ export default function Blackjack({ tokens, setTokens, onBack }) {
 
       {playerCards.length > 0 && (
         <div style={activeHand === 0 && isPlaying ? S.activeSection : S.section}>
-          <div style={S.sectionLabel}>◈ {splitCards ? 'Hand 1' : 'You'} — {handTotal(playerCards)}{activeHand === 0 && isPlaying && <span style={{ color: '#ff6600', marginLeft: '0.5rem' }}>◄ ACTIVE</span>}</div>
+          <div style={S.sectionLabel}>◈ {splitCards ? 'Hand 1' : 'You'} — {handTotal(playerCards)}{activeHand === 0 && isPlaying && <span style={{ color: '#ffee00', marginLeft: '0.5rem' }}>◄ ACTIVE</span>}</div>
           <div style={S.cardRow}>
             {playerCards.map((card, i) => <div key={i} style={{ ...S.card, color: card.isRed ? '#cc0000' : '#111' }}><div>{card.value}</div><div style={{ fontSize: '1.3rem' }}>{card.suit}</div></div>)}
           </div>
@@ -199,7 +216,7 @@ export default function Blackjack({ tokens, setTokens, onBack }) {
 
       {splitCards && (
         <div style={activeHand === 1 && isPlaying ? S.activeSection : S.section}>
-          <div style={S.sectionLabel}>◈ Hand 2 — {handTotal(splitCards)}{activeHand === 1 && isPlaying && <span style={{ color: '#ff6600', marginLeft: '0.5rem' }}>◄ ACTIVE</span>}</div>
+          <div style={S.sectionLabel}>◈ Hand 2 — {handTotal(splitCards)}{activeHand === 1 && isPlaying && <span style={{ color: '#ffee00', marginLeft: '0.5rem' }}>◄ ACTIVE</span>}</div>
           <div style={S.cardRow}>
             {splitCards.map((card, i) => <div key={i} style={{ ...S.card, color: card.isRed ? '#cc0000' : '#111' }}><div>{card.value}</div><div style={{ fontSize: '1.3rem' }}>{card.suit}</div></div>)}
           </div>
@@ -210,7 +227,7 @@ export default function Blackjack({ tokens, setTokens, onBack }) {
       {isPlaying && (
         <div style={{ ...S.section, display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button onClick={doHit} style={S.btn('#00ff88', false)}>HIT</button>
-          <button onClick={doStand} style={S.btn('#ff6600', false)}>STAND</button>
+          <button onClick={doStand} style={S.btn('#ffee00', false)}>STAND</button>
           {canDoubleDown && <button onClick={doDoubleDown} style={S.btn('#ffaa00', false)}>DOUBLE</button>}
           {canSplit && <button onClick={doSplit} style={S.btn('#00ffcc', false)}>SPLIT</button>}
         </div>

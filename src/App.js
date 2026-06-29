@@ -137,6 +137,15 @@ export default function App() {
     }
   };
 
+  const disconnectWallet = () => {
+    setWalletAddress(null);
+    setPokerChips(0);
+    setTokens(() => {
+      const saved = localStorage.getItem(GUEST_KEY);
+      return saved ? parseInt(saved) : 0;
+    });
+  };
+
   const doFreeClaim = async () => {
     const newTotal = tokens + FREE_TOKENS;
     saveLastClaim(GUEST_CLAIM_KEY);
@@ -238,6 +247,7 @@ export default function App() {
           status={status}
           onSelect={g => setGame(g)}
           onConnect={connectWallet}
+          onDisconnect={disconnectWallet}
         />
       )}
     </>
