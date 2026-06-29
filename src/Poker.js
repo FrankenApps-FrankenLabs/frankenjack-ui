@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { createDeck, determineWinner, getHandName, evaluateHand, dealerDecision } from './pokerUtils';
 
+const BACKEND_URL = 'https://frankenapps-frankenlabs-frankenjack.onrender.com';
 const STAGES = { IDLE: 'idle', PREFLOP: 'preflop', FLOP: 'flop', TURN: 'turn', RIVER: 'river', SHOWDOWN: 'showdown' };
 const MIN_BET = 5;
 const BIG_BLIND = 5;
 const SMALL_BLIND = 2;
 
-export default function Poker({ tokens, setTokens, onBack }) {
+export default function Poker({ tokens, setTokens, onBack, wallet }) {
   const [stage, setStage] = useState(STAGES.IDLE);
   const [deck, setDeck] = useState([]);
   const [playerHole, setPlayerHole] = useState([]);
@@ -23,6 +24,19 @@ export default function Poker({ tokens, setTokens, onBack }) {
   const [dealerStatus, setDealerStatus] = useState('');
 
   const triggerGlitch = () => { setGlitch(true); setTimeout(() => setGlitch(false), 600); };
+
+  const updateLeaderboard = async (wins, hands, biggestPot) => {
+    if (!wallet) return;
+    try {
+      await fetch(`${BACKEND_URL}/api/leaderboard/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet, poker_wins: wins, total_hands: hands, biggest_pot: biggestPot })
+      });
+    } catch (err) {
+      console.error('Leaderboard update failed:', err);
+    }
+  };
 
   const startHand = () => {
     if (tokens < BIG_BLIND) { setStatus('Not enough tokens!'); return; }
@@ -64,7 +78,6 @@ export default function Poker({ tokens, setTokens, onBack }) {
     setTokens(tokens - betAmount);
     setPlayerBet(playerBet + betAmount);
 
-    // Dealer responds
     const decision = dealerDecision(dealerHole, community);
     if (decision === 'raise') {
       const dealerRaise = betAmount;
@@ -73,7 +86,6 @@ export default function Poker({ tokens, setTokens, onBack }) {
       setDealerBet(dealerBet + dealerRaise);
       setDealerStatus(`Dealer raises ${dealerRaise}!`);
       if (tokens - betAmount < dealerRaise) {
-        // Player can't afford to call dealer raise — auto fold
         setFolded(true);
         finishHand(newPot, true, false);
         return;
@@ -86,7 +98,6 @@ export default function Poker({ tokens, setTokens, onBack }) {
       setDealerStatus('Dealer calls.');
       advanceStage(newPot, [...community]);
     } else {
-      // Dealer folds
       setDealerStatus('Dealer folds!');
       finishHand(newPlayerPot, false, true);
     }
@@ -141,12 +152,14 @@ export default function Poker({ tokens, setTokens, onBack }) {
     triggerGlitch();
 
     if (playerFolded) {
+      updateLeaderboard(0, 1, finalPot);
       setResult({ winner: 'dealer', label: '💀 YOU FOLDED', color: '#ff4400', sub: `Lost ${finalPot} tokens`, payout: 0 });
       return;
     }
 
     if (dealerFoldedVal) {
       setTokens(prev => prev + finalPot);
+      updateLeaderboard(1, 1, finalPot);
       setResult({ winner: 'player', label: '⚡ DEALER FOLDS!', color: '#00ff88', sub: `+${finalPot} tokens`, payout: finalPot });
       return;
     }
@@ -157,12 +170,15 @@ export default function Poker({ tokens, setTokens, onBack }) {
 
     if (winner === 'player') {
       setTokens(prev => prev + finalPot);
+      updateLeaderboard(1, 1, finalPot);
       setResult({ winner: 'player', label: '⚡ YOU WIN!', color: '#00ff88', sub: `+${finalPot} tokens`, payout: finalPot, playerHand: playerHandName, dealerHand: dealerHandName });
     } else if (winner === 'dealer') {
+      updateLeaderboard(0, 1, finalPot);
       setResult({ winner: 'dealer', label: '💀 DEALER WINS', color: '#ff4400', sub: `Lost ${finalPot} tokens`, payout: 0, playerHand: playerHandName, dealerHand: dealerHandName });
     } else {
       const half = Math.floor(finalPot / 2);
       setTokens(prev => prev + half);
+      updateLeaderboard(0, 1, finalPot);
       setResult({ winner: 'tie', label: '🔄 SPLIT POT', color: '#ffaa00', sub: `Returned ${half} tokens`, payout: half, playerHand: playerHandName, dealerHand: dealerHandName });
     }
   };
@@ -171,14 +187,14 @@ export default function Poker({ tokens, setTokens, onBack }) {
   const canCheck = playerBet >= dealerBet;
 
   const S = {
-    section: { background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '680px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(0,255,100,0.1)' },
+    section: { background: 'rgba(10,0,25,0.85)', border: '1px solid rgba(180,0,255,0.3)', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '680px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(180,0,255,0.1)' },
     sectionLabel: { color: '#00ff88', fontSize: '0.7rem', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 0 8px #00ff88', marginBottom: '0.75rem' },
     btn: (color, disabled) => ({ background: disabled ? 'rgba(255,255,255,0.05)' : 'transparent', border: `2px solid ${disabled ? '#333' : color}`, color: disabled ? '#444' : color, borderRadius: '6px', padding: '0.75rem 1.5rem', fontSize: '0.9rem', fontWeight: 900, letterSpacing: '3px', textTransform: 'uppercase', cursor: disabled ? 'default' : 'pointer', textShadow: disabled ? 'none' : `0 0 10px ${color}`, boxShadow: disabled ? 'none' : `0 0 15px ${color}33`, transition: 'all 0.2s', flex: 1, minWidth: '80px', fontFamily: "'Courier New', monospace" }),
     betBtn: (active) => ({ background: active ? 'rgba(0,255,100,0.2)' : 'transparent', border: `2px solid ${active ? '#00ff88' : '#333'}`, color: active ? '#00ff88' : '#666', borderRadius: '6px', padding: '0.4rem 1rem', fontSize: '0.85rem', fontWeight: 900, cursor: 'pointer', letterSpacing: '2px', fontFamily: "'Courier New', monospace" }),
-    card: (isRed) => ({ background: 'rgba(255,255,255,0.95)', borderRadius: '8px', width: '55px', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 900, boxShadow: '0 0 15px rgba(0,255,100,0.5)', border: '2px solid rgba(0,255,100,0.5)', flexShrink: 0, color: isRed ? '#cc0000' : '#111' }),
-    hiddenCard: { background: 'linear-gradient(135deg, #001a05, #002200)', borderRadius: '8px', width: '55px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 0 15px rgba(0,255,100,0.3)', border: '2px solid rgba(255,102,0,0.5)', flexShrink: 0 },
+    card: (isRed) => ({ background: 'rgba(255,255,255,0.95)', borderRadius: '8px', width: '55px', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 900, boxShadow: '0 0 15px rgba(180,0,255,0.4)', border: '2px solid rgba(180,0,255,0.4)', flexShrink: 0, color: isRed ? '#cc0000' : '#111' }),
+    hiddenCard: { background: 'linear-gradient(135deg, #0a0015, #1a0030)', borderRadius: '8px', width: '55px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 0 15px rgba(180,0,255,0.3)', border: '2px solid rgba(180,0,255,0.4)', flexShrink: 0 },
     cardRow: { display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center', margin: '0.5rem 0' },
-    resultOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,10,2,0.88)', zIndex: 500, flexDirection: 'column', gap: '0.75rem', cursor: 'pointer' },
+    resultOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5,0,15,0.92)', zIndex: 500, flexDirection: 'column', gap: '0.75rem', cursor: 'pointer' },
   };
 
   const renderCard = (card, i) => (
@@ -191,7 +207,6 @@ export default function Poker({ tokens, setTokens, onBack }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
 
-      {/* Result overlay */}
       {result && stage === STAGES.SHOWDOWN && (
         <div style={S.resultOverlay} onClick={() => { setResult(null); setStage(STAGES.IDLE); }}>
           <div style={{ fontSize: 'clamp(2rem,8vw,4.5rem)', fontWeight: 900, color: result.color, textShadow: `0 0 20px ${result.color}, 0 0 60px ${result.color}`, letterSpacing: '6px', animation: glitch ? 'glitch 0.1s infinite' : 'none' }}>{result.label}</div>
@@ -199,7 +214,7 @@ export default function Poker({ tokens, setTokens, onBack }) {
           {result.playerHand && (
             <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
               <div style={{ color: '#00ff88', fontSize: '0.8rem', letterSpacing: '3px' }}>YOUR HAND: {result.playerHand}</div>
-              <div style={{ color: '#ff6600', fontSize: '0.8rem', letterSpacing: '3px' }}>DEALER HAND: {result.dealerHand}</div>
+              <div style={{ color: '#ffee00', fontSize: '0.8rem', letterSpacing: '3px' }}>DEALER HAND: {result.dealerHand}</div>
             </div>
           )}
           <div style={{ color: '#444', fontSize: '0.75rem', letterSpacing: '2px', marginTop: '0.5rem' }}>TAP TO CONTINUE</div>
@@ -209,13 +224,13 @@ export default function Poker({ tokens, setTokens, onBack }) {
       {/* Top bar */}
       <div style={{ width: '100%', maxWidth: '680px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <button onClick={onBack} style={{ background: 'transparent', border: '1px solid #444', color: '#666', borderRadius: '6px', padding: '0.4rem 1rem', fontSize: '0.7rem', cursor: 'pointer', letterSpacing: '3px', fontFamily: "'Courier New', monospace", whiteSpace: 'nowrap' }}>← LOBBY</button>
-        <div style={{ flex: 1, background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ flex: 1, background: 'rgba(10,0,25,0.85)', border: '1px solid rgba(180,0,255,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ color: '#00ff88', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Courier New', monospace" }}>TOKENS</span>
-          <span style={{ color: '#ffaa00', fontSize: '1.1rem', fontWeight: 900, letterSpacing: '2px', fontFamily: "'Courier New', monospace", textShadow: '0 0 10px #ffaa00' }}>🪙 {tokens}</span>
+          <span style={{ color: '#ffee00', fontSize: '1.1rem', fontWeight: 900, letterSpacing: '2px', fontFamily: "'Courier New', monospace", textShadow: '0 0 10px #ffee00' }}>🪙 {tokens}</span>
         </div>
         {isPlaying && (
-          <div style={{ background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(255,170,0,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span style={{ color: '#ffaa00', fontSize: '0.65rem', letterSpacing: '2px', fontFamily: "'Courier New', monospace" }}>POT: 🪙 {pot}</span>
+          <div style={{ background: 'rgba(10,0,25,0.85)', border: '1px solid rgba(180,0,255,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <span style={{ color: '#ffee00', fontSize: '0.65rem', letterSpacing: '2px', fontFamily: "'Courier New', monospace" }}>POT: 🪙 {pot}</span>
             <span style={{ color: '#666', fontSize: '0.65rem', letterSpacing: '2px', fontFamily: "'Courier New', monospace" }}>{stage.toUpperCase()}</span>
           </div>
         )}
@@ -224,7 +239,7 @@ export default function Poker({ tokens, setTokens, onBack }) {
       {/* Dealer hand */}
       {dealerHole.length > 0 && (
         <div style={S.section}>
-          <div style={S.sectionLabel}>◈ Dealer {dealerStatus && <span style={{ color: '#ffaa00', fontSize: '0.65rem', marginLeft: '0.5rem' }}>— {dealerStatus}</span>}</div>
+          <div style={S.sectionLabel}>◈ Dealer {dealerStatus && <span style={{ color: '#ffee00', fontSize: '0.65rem', marginLeft: '0.5rem' }}>— {dealerStatus}</span>}</div>
           <div style={S.cardRow}>
             {stage === STAGES.SHOWDOWN && !folded
               ? dealerHole.map((card, i) => renderCard(card, i))
@@ -268,7 +283,7 @@ export default function Poker({ tokens, setTokens, onBack }) {
               ? <button onClick={doCheck} style={S.btn('#00ff88', false)}>CHECK</button>
               : <button onClick={doCall} style={S.btn('#00ff88', tokens < BIG_BLIND)}>CALL</button>
             }
-            <button onClick={doRaise} disabled={tokens < betAmount} style={S.btn('#ffaa00', tokens < betAmount)}>RAISE {betAmount}</button>
+            <button onClick={doRaise} disabled={tokens < betAmount} style={S.btn('#ffee00', tokens < betAmount)}>RAISE {betAmount}</button>
             <button onClick={doFold} style={S.btn('#ff4400', false)}>FOLD</button>
           </div>
           {status && <div style={{ color: '#ff4444', fontSize: '0.75rem', letterSpacing: '2px', marginTop: '0.75rem' }}>⚡ {status}</div>}

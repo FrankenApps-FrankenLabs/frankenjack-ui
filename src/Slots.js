@@ -17,7 +17,7 @@ const REEL_COUNT = 5;
 const SPIN_MS = 1500;
 const SAFE_DEFAULT = [SYMBOLS[0], SYMBOLS[0], SYMBOLS[0], SYMBOLS[0], SYMBOLS[0]];
 
-export default function Slots({ tokens, setTokens, onBack }) {
+export default function Slots({ tokens, setTokens, onBack, wallet }) {
   const [displaySymbols, setDisplaySymbols] = useState(SAFE_DEFAULT);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
@@ -43,6 +43,19 @@ export default function Slots({ tokens, setTokens, onBack }) {
     }
     return () => clearInterval(animRef.current);
   }, [spinning]);
+
+  const updateLeaderboard = async (wins, hands) => {
+    if (!wallet) return;
+    try {
+      await fetch(`${SERVER_URL}/api/leaderboard/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet, slots_wins: wins, total_hands: hands })
+      });
+    } catch (err) {
+      console.error('Leaderboard update failed:', err);
+    }
+  };
 
   async function doSpin() {
     if (spinning) return;
@@ -82,6 +95,11 @@ export default function Slots({ tokens, setTokens, onBack }) {
       }
 
       setResult(data);
+
+      // Update leaderboard
+      const win = data.payout > 0 ? 1 : 0;
+      updateLeaderboard(win, 1);
+
     } catch (err) {
       await new Promise(r => setTimeout(r, SPIN_MS));
       setDisplaySymbols(SAFE_DEFAULT);
@@ -91,11 +109,11 @@ export default function Slots({ tokens, setTokens, onBack }) {
   }
 
   const S = {
-    section: { background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '640px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(0,255,100,0.1)' },
+    section: { background: 'rgba(10,0,25,0.85)', border: '1px solid rgba(180,0,255,0.3)', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '640px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(180,0,255,0.1)' },
     sectionLabel: { color: '#00ff88', fontSize: '0.7rem', letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 0 8px #00ff88', marginBottom: '0.75rem' },
     btn: (color, disabled) => ({ background: disabled ? 'rgba(255,255,255,0.05)' : 'transparent', border: `2px solid ${disabled ? '#333' : color}`, color: disabled ? '#444' : color, borderRadius: '6px', padding: '0.75rem 1.5rem', fontSize: '0.9rem', fontWeight: 900, letterSpacing: '3px', textTransform: 'uppercase', cursor: disabled ? 'default' : 'pointer', textShadow: disabled ? 'none' : `0 0 10px ${color}`, boxShadow: disabled ? 'none' : `0 0 15px ${color}33`, transition: 'all 0.2s', flex: 1, minWidth: '100px', fontFamily: "'Courier New', monospace" }),
     betBtn: (active) => ({ background: active ? 'rgba(0,255,100,0.2)' : 'transparent', border: `2px solid ${active ? '#00ff88' : '#333'}`, color: active ? '#00ff88' : '#666', borderRadius: '6px', padding: '0.5rem 1.25rem', fontSize: '1rem', fontWeight: 900, cursor: 'pointer', textShadow: active ? '0 0 10px #00ff88' : 'none', letterSpacing: '2px', fontFamily: "'Courier New', monospace" }),
-    reel: (win) => ({ width: '80px', height: '110px', background: 'rgba(0,20,5,0.9)', border: `2px solid ${spinning ? '#1a3a1a' : win ? '#00ff88' : '#1a3a1a'}`, borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '2.2rem', boxShadow: !spinning && win ? '0 0 20px #00ff8855' : 'none', transition: 'border-color 0.3s, box-shadow 0.3s', fontFamily: "'Courier New', monospace", overflow: 'hidden' }),
+    reel: (win) => ({ width: '80px', height: '110px', background: 'rgba(10,0,25,0.9)', border: `2px solid ${spinning ? '#2a0a3a' : win ? '#00ff88' : '#2a0a3a'}`, borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '2.2rem', boxShadow: !spinning && win ? '0 0 20px #00ff8855' : 'none', transition: 'border-color 0.3s, box-shadow 0.3s', fontFamily: "'Courier New', monospace", overflow: 'hidden' }),
   };
 
   const isWin = result && result.payout > 0;
@@ -105,9 +123,9 @@ export default function Slots({ tokens, setTokens, onBack }) {
 
       <div style={{ width: '100%', maxWidth: '640px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <button onClick={onBack} style={{ background: 'transparent', border: '1px solid #444', color: '#666', borderRadius: '6px', padding: '0.4rem 1rem', fontSize: '0.7rem', cursor: 'pointer', letterSpacing: '3px', fontFamily: "'Courier New', monospace", whiteSpace: 'nowrap' }}>← LOBBY</button>
-        <div style={{ flex: 1, background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ flex: 1, background: 'rgba(10,0,25,0.85)', border: '1px solid rgba(180,0,255,0.3)', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ color: '#00ff88', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Courier New', monospace" }}>TOKENS</span>
-          <span style={{ color: '#ffaa00', fontSize: '1.1rem', fontWeight: 900, letterSpacing: '2px', fontFamily: "'Courier New', monospace", textShadow: '0 0 10px #ffaa00' }}>🪙 {tokens}</span>
+          <span style={{ color: '#ffee00', fontSize: '1.1rem', fontWeight: 900, letterSpacing: '2px', fontFamily: "'Courier New', monospace", textShadow: '0 0 10px #ffee00' }}>🪙 {tokens}</span>
         </div>
       </div>
 
@@ -137,7 +155,7 @@ export default function Slots({ tokens, setTokens, onBack }) {
           ))}
         </div>
 
-        <div style={{ textAlign: 'center', color: '#222', fontSize: '0.6rem', letterSpacing: '3px', marginBottom: '0.75rem' }}>── CENTER PAYLINE ──</div>
+        <div style={{ textAlign: 'center', color: '#333', fontSize: '0.6rem', letterSpacing: '3px', marginBottom: '0.75rem' }}>── CENTER PAYLINE ──</div>
 
         {result && !spinning && (
           <div style={{ textAlign: 'center', marginBottom: '0.75rem' }}>
@@ -190,7 +208,7 @@ export default function Slots({ tokens, setTokens, onBack }) {
             { sym: '💎', name: 'Diamond',      pays: '40×/100×/200×' },
             { sym: '⚡', name: 'Frankenstein', pays: '3× = FREE SPINS', gold: true },
           ].map(row => (
-            <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0', borderBottom: '1px solid #0d1a0d' }}>
+            <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0', borderBottom: '1px solid #1a0a2a' }}>
               <span style={{ fontSize: '1rem', color: row.red ? '#ff2244' : row.gold ? '#ffd700' : '#e0ffe8', fontFamily: "'Courier New', monospace", width: '28px', textAlign: 'center' }}>{row.sym}</span>
               <div>
                 <div style={{ color: '#888', fontSize: '0.6rem', letterSpacing: '1px' }}>{row.name}</div>
