@@ -5,6 +5,7 @@ import Blackjack from './Blackjack';
 import Slots from './Slots';
 import Poker from './Poker';
 import Leaderboard from './Leaderboard';
+import Roulette from './Roulette';
 
 const RECEIVING_WALLET = '0x11cEF17C7581Df308179919e80Be5Dbb6B1CcC4B';
 const BACKEND_URL = 'https://frankenapps-frankenlabs-frankenjack.onrender.com';
@@ -81,6 +82,8 @@ export default function App() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [ageCheck, setAgeCheck] = useState(false);
   const [entertainmentCheck, setEntertainmentCheck] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoStatus, setPromoStatus] = useState('');
 
   useEffect(() => {
     const handleResize = () => setMobile(window.innerWidth < 900);
@@ -137,6 +140,19 @@ export default function App() {
     }
   };
 
+  const switchWallet = async () => {
+    try {
+      if (!window.ethereum) throw new Error('MetaMask not found');
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{ eth_accounts: {} }]
+      });
+      await connectWallet();
+    } catch (err) {
+      console.error('Switch failed:', err);
+    }
+  };
+
   const disconnectWallet = () => {
     setWalletAddress(null);
     setPokerChips(0);
@@ -190,6 +206,30 @@ export default function App() {
     setLoading(false);
   };
 
+  const doPromoCode = async () => {
+    if (!walletAddress) { setPromoStatus('❌ Connect wallet first.'); setTimeout(() => setPromoStatus(''), 3000); return; }
+    if (!promoCode) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/payments/promo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: walletAddress, code: promoCode })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTokens(data.tokens);
+        setPromoStatus(`✅ +${data.amount} tokens added!`);
+        setPromoCode('');
+      } else {
+        setPromoStatus('❌ ' + data.error);
+      }
+      setTimeout(() => setPromoStatus(''), 3000);
+    } catch (err) {
+      setPromoStatus('❌ Failed to redeem.');
+      setTimeout(() => setPromoStatus(''), 3000);
+    }
+  };
+
   const canClaim = canFreeClaim(GUEST_CLAIM_KEY);
   const countdown = freeClaimCountdown(GUEST_CLAIM_KEY);
   const bothChecked = ageCheck && entertainmentCheck;
@@ -234,6 +274,8 @@ export default function App() {
         <Poker tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} wallet={walletAddress} />
       ) : game === 'leaderboard' ? (
         <Leaderboard onBack={() => setGame(null)} />
+      ) : game === 'roulette' ? (
+        <Roulette tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} wallet={walletAddress} />
       ) : (
         <Lobby
           walletAddress={walletAddress}
@@ -248,6 +290,11 @@ export default function App() {
           onSelect={g => setGame(g)}
           onConnect={connectWallet}
           onDisconnect={disconnectWallet}
+          onSwitch={switchWallet}
+          promoCode={promoCode}
+          setPromoCode={setPromoCode}
+          promoStatus={promoStatus}
+          onPromo={doPromoCode}
         />
       )}
     </>
