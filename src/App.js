@@ -4,6 +4,7 @@ import Lobby from './Lobby';
 import Blackjack from './Blackjack';
 import Slots from './Slots';
 import Poker from './Poker';
+import Leaderboard from './Leaderboard';
 
 const RECEIVING_WALLET = '0x11cEF17C7581Df308179919e80Be5Dbb6B1CcC4B';
 const BACKEND_URL = 'https://frankenapps-frankenlabs-frankenjack.onrender.com';
@@ -42,21 +43,21 @@ function freeClaimCountdown(key) {
 
 const NeonPanel = ({ flip }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1.5rem 0.5rem' }}>
-    <div style={{ width: '8px', height: '80px', background: 'linear-gradient(180deg, #00ff88, #00cc66)', borderRadius: '4px', animation: 'neonGreen1 1.8s ease-in-out infinite' }} />
-    <div style={{ width: '22px', height: '22px', background: '#ff6600', transform: 'rotate(45deg)', borderRadius: '3px', animation: 'neonOrange1 1.2s ease-in-out infinite' }} />
+    <div style={{ width: '8px', height: '80px', background: 'linear-gradient(180deg, #ffffff, #dddddd)', borderRadius: '4px', boxShadow: '0 0 8px #ffffff, 0 0 20px #ffffff88', animation: 'neonGreen1 1.8s ease-in-out infinite' }} />
+    <div style={{ width: '22px', height: '22px', background: '#ffee00', transform: 'rotate(45deg)', borderRadius: '3px', boxShadow: '0 0 8px #ffee00, 0 0 20px #ffee0088', animation: 'neonOrange1 1.2s ease-in-out infinite' }} />
     <div style={{ fontSize: '1.8rem', color: '#00ff88', animation: flip ? 'neonGreen2 2.3s ease-in-out infinite' : 'neonGreen1 2.3s ease-in-out infinite', textShadow: '0 0 10px #00ff88, 0 0 20px #00ff88' }}>♠</div>
-    <div style={{ width: '8px', height: '60px', background: 'linear-gradient(180deg, #ff6600, #ffaa00)', borderRadius: '4px', animation: 'neonOrange2 2s ease-in-out infinite' }} />
-    <div style={{ width: '28px', height: '28px', borderRadius: '50%', border: '4px solid #00ff88', animation: 'neonGreen1 1.5s ease-in-out infinite' }} />
-    <div style={{ fontSize: '1.8rem', color: '#ff6600', animation: flip ? 'neonOrange1 1.7s ease-in-out infinite' : 'neonOrange2 1.7s ease-in-out infinite', textShadow: '0 0 10px #ff6600, 0 0 20px #ff6600' }}>♥</div>
-    <div style={{ width: '8px', height: '70px', background: 'linear-gradient(180deg, #00ff88, #00cc66, #00ff88)', borderRadius: '4px', animation: 'neonGreen2 1.9s ease-in-out infinite' }} />
-    <div style={{ width: '22px', height: '22px', background: '#00ff88', transform: 'rotate(45deg)', borderRadius: '2px', animation: 'neonGreen1 1.4s ease-in-out infinite' }} />
-    <div style={{ fontSize: '1.8rem', color: '#ffaa00', animation: 'neonFlicker 3s ease-in-out infinite', textShadow: '0 0 10px #ffaa00, 0 0 20px #ffaa00' }}>♦</div>
-    <div style={{ width: '8px', height: '90px', background: 'linear-gradient(180deg, #ff6600, #ffaa00, #ff6600)', borderRadius: '4px', animation: 'neonOrange1 2.5s ease-in-out infinite' }} />
+    <div style={{ width: '8px', height: '60px', background: 'linear-gradient(180deg, #ffffff, #dddddd)', borderRadius: '4px', boxShadow: '0 0 8px #ffffff, 0 0 20px #ffffff88', animation: 'neonOrange2 2s ease-in-out infinite' }} />
+    <div style={{ width: '28px', height: '28px', borderRadius: '50%', border: '4px solid #00ff88', boxShadow: '0 0 8px #00ff88, 0 0 20px #00ff8888', animation: 'neonGreen1 1.5s ease-in-out infinite' }} />
+    <div style={{ fontSize: '1.8rem', color: '#ffee00', animation: flip ? 'neonOrange1 1.7s ease-in-out infinite' : 'neonOrange2 1.7s ease-in-out infinite', textShadow: '0 0 10px #ffee00, 0 0 20px #ffee00' }}>♥</div>
+    <div style={{ width: '8px', height: '70px', background: 'linear-gradient(180deg, #ffffff, #dddddd)', borderRadius: '4px', boxShadow: '0 0 8px #ffffff, 0 0 20px #ffffff88', animation: 'neonGreen2 1.9s ease-in-out infinite' }} />
+    <div style={{ width: '22px', height: '22px', background: '#00ff88', transform: 'rotate(45deg)', borderRadius: '2px', boxShadow: '0 0 8px #00ff88, 0 0 20px #00ff8888', animation: 'neonGreen1 1.4s ease-in-out infinite' }} />
+    <div style={{ fontSize: '1.8rem', color: '#ffee00', animation: 'neonFlicker 3s ease-in-out infinite', textShadow: '0 0 10px #ffee00, 0 0 20px #ffee00' }}>♦</div>
+    <div style={{ width: '8px', height: '90px', background: 'linear-gradient(180deg, #ffffff, #dddddd)', borderRadius: '4px', boxShadow: '0 0 8px #ffffff, 0 0 20px #ffffff88', animation: 'neonOrange1 2.5s ease-in-out infinite' }} />
     <div style={{ width: 0, height: 0, borderLeft: '12px solid transparent', borderRight: '12px solid transparent', borderBottom: '22px solid #00ff88', filter: 'drop-shadow(0 0 6px #00ff88)', animation: 'neonGreen2 1.4s ease-in-out infinite' }} />
     <div style={{ fontSize: '1.8rem', color: '#00ff88', animation: flip ? 'neonGreen1 2s ease-in-out infinite' : 'neonGreen2 2s ease-in-out infinite', textShadow: '0 0 10px #00ff88, 0 0 20px #00ff88' }}>♣</div>
-    <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '4px solid #ff6600', animation: 'neonOrange2 1.8s ease-in-out infinite' }} />
-    <div style={{ width: '8px', height: '80px', background: 'linear-gradient(180deg, #00cc66, #00ff88)', borderRadius: '4px', animation: 'neonGreen1 2.2s ease-in-out infinite' }} />
-    <div style={{ width: '8px', height: '60px', background: 'linear-gradient(180deg, #ffaa00, #ff6600)', borderRadius: '4px', animation: 'neonOrange1 1.6s ease-in-out infinite' }} />
+    <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '4px solid #ffee00', boxShadow: '0 0 8px #ffee00, 0 0 20px #ffee0088', animation: 'neonOrange2 1.8s ease-in-out infinite' }} />
+    <div style={{ width: '8px', height: '80px', background: 'linear-gradient(180deg, #ffffff, #dddddd)', borderRadius: '4px', boxShadow: '0 0 8px #ffffff, 0 0 20px #ffffff88', animation: 'neonGreen1 2.2s ease-in-out infinite' }} />
+    <div style={{ width: '8px', height: '60px', background: 'linear-gradient(180deg, #ffffff, #dddddd)', borderRadius: '4px', boxShadow: '0 0 8px #ffffff, 0 0 20px #ffffff88', animation: 'neonOrange1 1.6s ease-in-out infinite' }} />
   </div>
 );
 
@@ -185,10 +186,10 @@ export default function App() {
   const bothChecked = ageCheck && entertainmentCheck;
 
   const S = {
-    app: { minHeight: '100vh', background: '#030d05', color: '#e0ffe8', fontFamily: "'Courier New', monospace", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative', overflow: 'hidden' },
+    app: { minHeight: '100vh', background: 'linear-gradient(135deg, #0a0015 0%, #12002a 40%, #0d0020 70%, #050010 100%)', color: '#e0ffe8', fontFamily: "'Courier New', monospace", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative', overflow: 'hidden' },
     scanlines: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)', pointerEvents: 'none', zIndex: 999 },
-    grid: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'linear-gradient(rgba(0,255,100,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,100,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none', zIndex: 0 },
-    section: { background: 'rgba(0,20,5,0.8)', border: '1px solid rgba(0,255,100,0.3)', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '600px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(0,255,100,0.1)' },
+    grid: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'linear-gradient(rgba(180,0,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(180,0,255,0.06) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none', zIndex: 0 },
+    section: { background: 'rgba(10,0,25,0.85)', border: '1px solid rgba(180,0,255,0.3)', borderRadius: '12px', padding: '1rem 1.5rem', marginBottom: '1rem', width: '100%', maxWidth: '600px', position: 'relative', zIndex: 1, boxShadow: '0 0 20px rgba(180,0,255,0.1)' },
     btn: (color, disabled) => ({ background: disabled ? 'rgba(255,255,255,0.05)' : 'transparent', border: `2px solid ${disabled ? '#333' : color}`, color: disabled ? '#444' : color, borderRadius: '6px', padding: '0.75rem 1.5rem', fontSize: '0.9rem', fontWeight: 900, letterSpacing: '3px', textTransform: 'uppercase', cursor: disabled ? 'default' : 'pointer', textShadow: disabled ? 'none' : `0 0 10px ${color}`, boxShadow: disabled ? 'none' : `0 0 15px ${color}33`, transition: 'all 0.2s', flex: 1, minWidth: '100px', fontFamily: "'Courier New', monospace" }),
     checkRow: { display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1rem', cursor: 'pointer' },
     checkbox: (checked) => ({ width: '20px', height: '20px', flexShrink: 0, marginTop: '2px', border: `2px solid ${checked ? '#00ff88' : '#444'}`, borderRadius: '4px', background: checked ? 'rgba(0,255,136,0.2)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: checked ? '0 0 10px #00ff8855' : 'none' }),
@@ -217,11 +218,13 @@ export default function App() {
           </button>
         </div>
       ) : game === 'blackjack' ? (
-        <Blackjack tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
+        <Blackjack tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} wallet={walletAddress} />
       ) : game === 'slots' ? (
-        <Slots tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
+        <Slots tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} wallet={walletAddress} />
       ) : game === 'poker' ? (
-        <Poker tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} />
+        <Poker tokens={tokens} setTokens={updateTokens} onBack={() => setGame(null)} wallet={walletAddress} />
+      ) : game === 'leaderboard' ? (
+        <Leaderboard onBack={() => setGame(null)} />
       ) : (
         <Lobby
           walletAddress={walletAddress}
@@ -248,18 +251,18 @@ export default function App() {
         @keyframes scanMove { 0%{top:0} 100%{top:100%} }
         @keyframes neonGreen1 { 0%,100%{opacity:1;box-shadow:0 0 8px #00ff88,0 0 20px #00ff88,0 0 40px #00ff88} 50%{opacity:0.4;box-shadow:0 0 4px #00ff88,0 0 8px #00ff88} }
         @keyframes neonGreen2 { 0%,100%{opacity:0.4;box-shadow:0 0 4px #00cc66,0 0 8px #00cc66} 50%{opacity:1;box-shadow:0 0 8px #00cc66,0 0 20px #00cc66,0 0 40px #00cc66} }
-        @keyframes neonOrange1 { 0%,100%{opacity:1;box-shadow:0 0 8px #ff6600,0 0 20px #ff6600,0 0 40px #ff6600} 50%{opacity:0.3;box-shadow:0 0 4px #ff6600} }
-        @keyframes neonOrange2 { 0%,100%{opacity:0.3;box-shadow:0 0 4px #ffaa00} 50%{opacity:1;box-shadow:0 0 8px #ffaa00,0 0 20px #ffaa00,0 0 40px #ffaa00} }
+        @keyframes neonOrange1 { 0%,100%{opacity:1;box-shadow:0 0 8px #ffee00,0 0 20px #ffee00,0 0 40px #ffee00} 50%{opacity:0.3;box-shadow:0 0 4px #ffee00} }
+        @keyframes neonOrange2 { 0%,100%{opacity:0.3;box-shadow:0 0 4px #ffee00} 50%{opacity:1;box-shadow:0 0 8px #ffee00,0 0 20px #ffee00,0 0 40px #ffee00} }
         @keyframes neonFlicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:0.2} 94%{opacity:1} 97%{opacity:0.4} 98%{opacity:1} }
         button:hover:not(:disabled) { filter: brightness(1.3); transform: scale(1.03); }
       `}</style>
       <div style={S.scanlines} />
       <div style={S.grid} />
-      <div style={{ position: 'fixed', left: 0, right: 0, height: '2px', background: 'rgba(0,255,100,0.15)', animation: 'scanMove 4s linear infinite', pointerEvents: 'none', zIndex: 998 }} />
+      <div style={{ position: 'fixed', left: 0, right: 0, height: '2px', background: 'rgba(180,0,255,0.4)', boxShadow: '0 0 8px rgba(180,0,255,0.8)', animation: 'scanMove 4s linear infinite', pointerEvents: 'none', zIndex: 998 }} />
 
       <div style={{ textAlign: 'center', marginBottom: '1rem', position: 'relative', zIndex: 1 }}>
         <h1 style={{ fontSize: 'clamp(2rem, 6vw, 4rem)', fontWeight: 900, letterSpacing: '8px', textTransform: 'uppercase', color: '#00ff88', margin: 0, textShadow: '0 0 10px #00ff88, 0 0 30px #00ff88, 0 0 60px #00cc66', animation: 'pulse 2s infinite' }}>FrankenJack</h1>
-        <div style={{ color: '#ff6600', letterSpacing: '6px', fontSize: '0.75rem', textShadow: '0 0 10px #ff6600', marginTop: '0.25rem' }}>◈ BLACKJACK · SLOTS · LIGHTCHAIN AI ◈</div>
+        <div style={{ color: '#ffee00', letterSpacing: '6px', fontSize: '0.75rem', textShadow: '0 0 10px #ffee00', marginTop: '0.25rem' }}>◈ BLACKJACK · SLOTS · LIGHTCHAIN AI ◈</div>
       </div>
 
       {mobile ? (
@@ -272,9 +275,9 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ color: '#111', fontSize: '0.65rem', letterSpacing: '3px', textTransform: 'uppercase', marginTop: 'auto', paddingTop: '2rem', zIndex: 1, textAlign: 'center' }}>
+      <div style={{ color: '#333', fontSize: '0.65rem', letterSpacing: '3px', textTransform: 'uppercase', marginTop: 'auto', paddingTop: '2rem', zIndex: 1, textAlign: 'center' }}>
         FrankenApps · Built on LightChain AI<br />
-        <a href="mailto:frankenlabsadmin@gmail.com" style={{ color: '#111', textDecoration: 'none' }}>frankenlabsadmin@gmail.com</a>
+        <a href="mailto:frankenlabsadmin@gmail.com" style={{ color: '#333', textDecoration: 'none' }}>frankenlabsadmin@gmail.com</a>
       </div>
     </div>
   );
